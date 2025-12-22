@@ -8,9 +8,6 @@ def setup_logging() -> None:
         datefmt='%Y-%m-%d %H:%M:%S',
     )
 
-    logging.getLogger('uvicorn.error').setLevel(logging.WARNING)
-    logging.getLogger('sqlalchemy').setLevel(logging.WARNING)
-
     logging.getLogger(__name__).info('Logging is starting.')
 
 
