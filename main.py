@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from flask import Flask, request
+from logger import logger
 import whisper
 import uuid
 
@@ -36,7 +37,7 @@ def transcription():
     except Exception:
         import traceback
         error_details = traceback.format_exc()
-        print(error_details)
+        logger.info(error_details)
         return 'Transcription error', 500
     finally:
         if file_path.exists():
