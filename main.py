@@ -36,8 +36,7 @@ def transcription():
         return result.get('text')
     except Exception:
         import traceback
-        error_details = traceback.format_exc()
-        logger.info(error_details)
+        logger.error(traceback.format_exc())
         return 'Transcription error', 500
     finally:
         if file_path.exists():
