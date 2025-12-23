@@ -9,7 +9,7 @@ STATIC = Path(__file__).resolve().parent / 'static'
 STATIC.mkdir(parents=True, exist_ok=True)
 
 ALLOWED_EXTENSIONS = {'mp3'}
-MODEL = whisper.load_model("medium")
+MODEL = whisper.load_model("small")
 
 app = Flask(__name__)
 app.config['static'] = STATIC
