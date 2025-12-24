@@ -33,7 +33,7 @@ def transcription():
     try:
         result = MODEL.transcribe(str(file_path))
 
-        return result.get('text')
+        return result
     except Exception:
         import traceback
         logger.error(traceback.format_exc())
