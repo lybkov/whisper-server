@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from flask import Flask, request
+from flask import Flask, request, jsonify
 from logger import logger
 import whisper
 import uuid
@@ -16,13 +16,15 @@ app.config['static'] = STATIC
 
 @app.route("/transcription", methods=['POST'])
 def transcription():
-    if 'file' not in request.files:
-        return "No file part", 400
+    if 'upload-file' not in request.files:
+        logger.warning('No file part')
+        return jsonify({'message': 'No file part'}, 400)
 
-    audio = request.files['file']
+    audio = request.files['upload-file']
 
     if not audio.filename.endswith('.mp3'):
-        return 'File is not audio', 400
+        logger.warning('File is not audio')
+        return jsonify({'message': 'File is not audio'}, 400)
 
     filename = f'{str(uuid.uuid4())}.mp3'
 
@@ -33,11 +35,11 @@ def transcription():
     try:
         result = MODEL.transcribe(str(file_path))
 
-        return result.get('text')
+        return jsonify(result)
     except Exception:
         import traceback
         logger.error(traceback.format_exc())
-        return 'Transcription error', 500
+        return jsonify({'message': 'Transcription error'}, 400)
     finally:
         if file_path.exists():
             file_path.unlink()
