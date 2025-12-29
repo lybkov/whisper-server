@@ -1,3 +1,5 @@
+import torch
+from pathlib import Path
 from pathlib import Path
 
 from flask import Flask, request, jsonify
@@ -9,7 +11,10 @@ STATIC = Path(__file__).resolve().parent / 'static'
 STATIC.mkdir(parents=True, exist_ok=True)
 
 ALLOWED_EXTENSIONS = {'mp3'}
-MODEL = whisper.load_model("base")
+device = "cuda" if torch.cuda.is_available() else "cpu"
+logger.info(f"Using device: {device}")
+
+MODEL = whisper.load_model("small", device=device)
 
 app = Flask(__name__)
 app.config['static'] = STATIC
