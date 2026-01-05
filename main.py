@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import torch
 from flask import Flask, request, jsonify
 from logger import logger
 import whisper
@@ -8,8 +9,11 @@ import uuid
 STATIC = Path(__file__).resolve().parent / 'static'
 STATIC.mkdir(parents=True, exist_ok=True)
 
+device = "cuda" if torch.cuda.is_available() else "cpu"
+MODEL = whisper.load_model("small", device=device)
 ALLOWED_EXTENSIONS = {'mp3'}
-MODEL = whisper.load_model("base")
+
+logger.info(f"Whisper loaded on device: {device}")
 
 app = Flask(__name__)
 app.config['static'] = STATIC
