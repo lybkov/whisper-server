@@ -10,7 +10,8 @@ STATIC.mkdir(parents=True, exist_ok=True)
 try:
     MODEL = WhisperModel("medium", device="cuda", compute_type="float16")
     device_name = "cuda"
-except Exception:
+except Exception as e:
+    print(f"CUDA loading failed: {e}. Falling back to CPU.")
     MODEL = WhisperModel("base", device="cpu", compute_type="int8")
     device_name = "cpu"
 
