@@ -7,14 +7,6 @@ import uuid
 STATIC = Path(__file__).resolve().parent / 'static'
 STATIC.mkdir(parents=True, exist_ok=True)
 
-try:
-    MODEL = WhisperModel("medium", device="cuda", compute_type="float16")
-    device_name = "cuda"
-except Exception as e:
-    print(f"CUDA loading failed: {e}. Falling back to CPU.")
-    MODEL = WhisperModel("base", device="cpu", compute_type="int8")
-    device_name = "cpu"
-
 app = Flask(__name__)
 app.config['static'] = STATIC
 
@@ -22,6 +14,14 @@ if __name__ != '__main__':
     gunicorn_logger = logging.getLogger('gunicorn.error')
     app.logger.handlers = gunicorn_logger.handlers
     app.logger.setLevel(gunicorn_logger.level)
+
+try:
+    MODEL = WhisperModel("medium", device="cuda", compute_type="float16")
+    device_name = "cuda"
+except Exception as e:
+    app.logger.error(f"!!! CUDA ERROR: {e}")
+    MODEL = WhisperModel("base", device="cpu", compute_type="int8")
+    device_name = "cpu"
 
 app.logger.info(f"Whisper loaded on device: {device_name}")
 
