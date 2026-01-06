@@ -1,8 +1,9 @@
+import whisper
+import torch
+import logging
+import uuid
 from pathlib import Path
 from flask import Flask, request, jsonify, Response
-import logging
-from faster_whisper import WhisperModel
-import uuid
 
 STATIC = Path(__file__).resolve().parent / 'static'
 STATIC.mkdir(parents=True, exist_ok=True)
@@ -16,15 +17,19 @@ if __name__ != '__main__':
     app.logger.setLevel(gunicorn_logger.level)
 
 try:
-    MODEL = WhisperModel("medium", device="cuda", compute_type="float16")
-    device_name = "cuda"
+    if torch.cuda.is_available():
+        model_name = "medium"
+        device_name = "cuda"
+        MODEL = whisper.load_model(model_name, device=device_name)
+    else:
+        raise Exception("CUDA device not found")
+
 except Exception as e:
-    app.logger.error(f"!!! CUDA ERROR: {e}")
-    MODEL = WhisperModel("base", device="cpu", compute_type="int8")
+    app.logger.error(f"!!! GPU Error, falling back to CPU: {e}")
+    MODEL = whisper.load_model("base", device="cpu")
     device_name = "cpu"
 
 app.logger.info(f"Whisper loaded on device: {device_name}")
-
 
 @app.route("/transcription", methods=['POST'])
 def transcription() -> tuple[Response, int] | Response:
@@ -33,9 +38,8 @@ def transcription() -> tuple[Response, int] | Response:
         return jsonify({'message': 'No file part'}), 400
 
     audio = request.files['upload-file']
-    if not audio.filename.endswith('.mp3'):
-        app.logger.warning('File is not audio')
-        return jsonify({'message': 'File is not audio'}), 400
+    if audio.filename == '':
+        return jsonify({'message': 'No selected file'}), 400
 
     filename = f'{uuid.uuid4()}.mp3'
     file_path = STATIC / filename
@@ -43,20 +47,24 @@ def transcription() -> tuple[Response, int] | Response:
     try:
         audio.save(str(file_path))
 
-        segments, info = MODEL.transcribe(str(file_path), beam_size=5)
+        result = MODEL.transcribe(
+            str(file_path), 
+            fp16=(device_name == "cuda"),
+            verbose=False
+        )
 
-        full_text = "".join([segment.text for segment in segments]).strip()
+        return jsonify({"text": result["text"].strip(),})
 
-        return jsonify({
-            "text": full_text,
-            "language": info.language,
-            "language_probability": info.language_probability,
-            "duration": info.duration
-        })
     except Exception:
         import traceback
         app.logger.error(traceback.format_exc())
-        return jsonify({'message': 'Transcription error'}), 400
+        return jsonify({'message': 'Transcription error'}), 500
     finally:
         if file_path.exists():
-            file_path.unlink()
+            try:
+                file_path.unlink()
+            except Exception as e:
+                app.logger.error(f"Error deleting file: {e}")
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
