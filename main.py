@@ -8,10 +8,10 @@ STATIC = Path(__file__).resolve().parent / 'static'
 STATIC.mkdir(parents=True, exist_ok=True)
 
 try:
-    MODEL = WhisperModel("turbo", device="cuda", compute_type="float16")
+    MODEL = WhisperModel("medium", device="cuda", compute_type="float16")
     device_name = "cuda"
 except Exception:
-    MODEL = WhisperModel("turbo", device="cpu", compute_type="int8")
+    MODEL = WhisperModel("base", device="cpu", compute_type="int8")
     device_name = "cpu"
 
 app = Flask(__name__)
