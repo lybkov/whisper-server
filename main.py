@@ -18,7 +18,7 @@ if __name__ != '__main__':
 
 try:
     if torch.cuda.is_available():
-        model_name = "medium"
+        model_name = "base"
         device_name = "cuda"
         MODEL = whisper.load_model(model_name, device=device_name)
     else:
