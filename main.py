@@ -53,7 +53,17 @@ def transcription() -> tuple[Response, int] | Response:
             verbose=False
         )
 
-        return jsonify({"text": result["text"].strip(),})
+        return jsonify({
+            "text": result["text"].strip(),
+            "segments": [
+                {
+                    "start": segment["start"],
+                    "end": segment["end"],
+                    "text": segment["text"].strip()
+                }
+                for segment in result["segments"]
+            ]
+        })
 
     except Exception:
         import traceback
