@@ -4,6 +4,8 @@ import logging
 import uuid
 from pathlib import Path
 from flask import Flask, request, jsonify, Response
+import threading
+from transcription import transcription
 
 STATIC = Path(__file__).resolve().parent / 'static'
 STATIC.mkdir(parents=True, exist_ok=True)
@@ -31,8 +33,9 @@ except Exception as e:
 
 app.logger.info(f"Whisper loaded on device: {device_name}")
 
+
 @app.route("/transcription", methods=['POST'])
-def transcription() -> tuple[Response, int] | Response:
+def transcription() -> tuple[Response, int]:
     if 'upload-file' not in request.files:
         app.logger.warning('No file part')
         return jsonify({'message': 'No file part'}), 400
@@ -44,37 +47,10 @@ def transcription() -> tuple[Response, int] | Response:
     filename = f'{uuid.uuid4()}.mp3'
     file_path = STATIC / filename
 
-    try:
-        audio.save(str(file_path))
+    threading.Thread(target=transcription, args=(file_path, MODEL, device_name, app))
 
-        result = MODEL.transcribe(
-            str(file_path), 
-            fp16=(device_name == "cuda"),
-            verbose=False
-        )
+    return jsonify({'message': 'File received successfully'}), 202
 
-        return jsonify({
-            "text": result["text"].strip(),
-            "segments": [
-                {
-                    "start": segment["start"],
-                    "end": segment["end"],
-                    "text": segment["text"].strip()
-                }
-                for segment in result["segments"]
-            ]
-        })
-
-    except Exception:
-        import traceback
-        app.logger.error(traceback.format_exc())
-        return jsonify({'message': 'Transcription error'}), 500
-    finally:
-        if file_path.exists():
-            try:
-                file_path.unlink()
-            except Exception as e:
-                app.logger.error(f"Error deleting file: {e}")
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
