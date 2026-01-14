@@ -5,7 +5,7 @@ import uuid
 from pathlib import Path
 from flask import Flask, request, jsonify, Response
 import threading
-from transcription import transcription
+from transcription import transcription as transcription_worker
 
 STATIC = Path(__file__).resolve().parent / 'static'
 STATIC.mkdir(parents=True, exist_ok=True)
@@ -47,7 +47,7 @@ def transcription() -> tuple[Response, int]:
     filename = f'{uuid.uuid4()}.mp3'
     file_path = STATIC / filename
 
-    threading.Thread(target=transcription, args=(file_path, MODEL, device_name, app))
+    threading.Thread(target=transcription_worker, args=(file_path, MODEL, device_name, app), daemon=True).start()
 
     return jsonify({'message': 'File received successfully'}), 202
 
