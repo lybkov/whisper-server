@@ -1,12 +1,19 @@
-import whisper
-import torch
 import logging
+import queue
+import threading
 import uuid
 from pathlib import Path
-from flask import Flask, request, jsonify, Response
+
+import torch
+import whisper
+from flask import Flask, Response, jsonify, request
+
+from transcription import transcription as transcription_worker
 
 STATIC = Path(__file__).resolve().parent / 'static'
 STATIC.mkdir(parents=True, exist_ok=True)
+
+task_queue = queue.Queue()
 
 app = Flask(__name__)
 app.config['static'] = STATIC
@@ -25,14 +32,32 @@ try:
         raise Exception("CUDA device not found")
 
 except Exception as e:
-    app.logger.error(f"!!! GPU Error, falling back to CPU: {e}")
+    app.logger.error('!!! GPU Error, falling back to CPU: %s', e)
     MODEL = whisper.load_model("base", device="cpu")
     device_name = "cpu"
 
-app.logger.info(f"Whisper loaded on device: {device_name}")
+app.logger.info('Whisper loaded on device: %s', device_name)
+
+
+def worker():
+    while True:
+        file_path, model, device, flask_app = task_queue.get()
+
+        try:
+            app.logger.info('Start transcription work')
+
+            transcription_worker(file_path, model, device, flask_app)
+
+        except Exception as e:
+            app.logger.error('Worker error: %s', e)
+        finally:
+            task_queue.task_done()
+
+threading.Thread(target=worker, daemon=True).start()
+
 
 @app.route("/transcription", methods=['POST'])
-def transcription() -> tuple[Response, int] | Response:
+def transcription() -> tuple[Response, int]:
     if 'upload-file' not in request.files:
         app.logger.warning('No file part')
         return jsonify({'message': 'No file part'}), 400
@@ -44,37 +69,12 @@ def transcription() -> tuple[Response, int] | Response:
     filename = f'{uuid.uuid4()}.mp3'
     file_path = STATIC / filename
 
-    try:
-        audio.save(str(file_path))
+    audio.save(file_path)
 
-        result = MODEL.transcribe(
-            str(file_path), 
-            fp16=(device_name == "cuda"),
-            verbose=False
-        )
+    task_queue.put((file_path, MODEL, device_name, app))
 
-        return jsonify({
-            "text": result["text"].strip(),
-            "segments": [
-                {
-                    "start": segment["start"],
-                    "end": segment["end"],
-                    "text": segment["text"].strip()
-                }
-                for segment in result["segments"]
-            ]
-        })
+    return jsonify({'message': 'File received successfully'}), 202
 
-    except Exception:
-        import traceback
-        app.logger.error(traceback.format_exc())
-        return jsonify({'message': 'Transcription error'}), 500
-    finally:
-        if file_path.exists():
-            try:
-                file_path.unlink()
-            except Exception as e:
-                app.logger.error(f"Error deleting file: {e}")
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='127.0.0.1', port=5000)

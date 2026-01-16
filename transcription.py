@@ -1,0 +1,54 @@
+import hashlib
+import hmac
+import json
+from pathlib import Path
+
+import httpx
+import whisper
+from dotenv import dotenv_values
+from flask import Flask
+
+env = dotenv_values('.env')
+key = env.get('TOKEN')
+webhook_url = env.get('')
+
+def transcription(
+        file_path: Path,
+        model: whisper.Whisper,
+        device_name: str,
+        app: Flask) -> None:
+    try:
+        result = model.transcribe(
+            str(file_path),
+            fp16=(device_name == "cuda"),
+            verbose=False,
+        )
+
+    except Exception as e:
+        app.logger.error('Error transition: %s', e)
+        return
+
+    file_path.unlink()
+
+    segments = json.dumps({
+        "text": result["text"].strip(),
+        "segments": [
+            {
+                "start": segment["start"],
+                "end": segment["end"],
+                "text": segment["text"].strip(),
+            }
+            for segment in result["segments"]
+        ],
+    })
+
+    signature = hmac.new(key.encode(), segments.encode(), hashlib.sha256).hexdigest()
+
+    headers = {
+        'x-signature': signature,
+    }
+    try:
+        with httpx.Client() as client:
+            client.post(headers=headers, content=segments, url=webhook_url)
+    except Exception as e:
+        app.logger.error('Error to send response: %s', e)
