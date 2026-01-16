@@ -10,12 +10,13 @@ from flask import Flask
 
 env = dotenv_values('.env')
 key = env.get('TOKEN')
-webhook_url = env.get('')
+webhook_url = env.get('WEBHOOK_URL')
 
 def transcription(
         file_path: Path,
         model: whisper.Whisper,
         device_name: str,
+        transcription_id: str,
         app: Flask) -> None:
     try:
         result = model.transcribe(
@@ -25,10 +26,8 @@ def transcription(
         )
 
     except Exception as e:
-        app.logger.error('Error transition: %s', e)
+        app.logger.error('Error transcription: %s', e)
         return
-
-    file_path.unlink()
 
     segments = json.dumps({
         "text": result["text"].strip(),
@@ -44,11 +43,22 @@ def transcription(
 
     signature = hmac.new(key.encode(), segments.encode(), hashlib.sha256).hexdigest()
 
+    arg = transcription_id if transcription_id else ''
+    base_url = webhook_url.rstrip('/')
+
     headers = {
         'x-signature': signature,
+        'Content-Type': 'application/json',
     }
     try:
         with httpx.Client() as client:
-            client.post(headers=headers, content=segments, url=webhook_url)
+            client.post(
+                headers=headers,
+                content=segments,
+                url=f'{base_url}/{arg}' if transcription_id else base_url,
+            )
     except Exception as e:
         app.logger.error('Error to send response: %s', e)
+    finally:
+        file_path.unlink()
+
