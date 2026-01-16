@@ -27,7 +27,10 @@ def transcription(
 
     except Exception as e:
         app.logger.error('Error transcription: %s', e)
+        app.logger.error('Error transition: %s', e)
         return
+
+    file_path.unlink()
 
     segments = json.dumps({
         "text": result["text"].strip(),
@@ -52,6 +55,7 @@ def transcription(
     }
     try:
         with httpx.Client() as client:
+            client.post(headers=headers, content=segments, url=webhook_url)
             client.post(
                 headers=headers,
                 content=segments,

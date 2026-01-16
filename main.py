@@ -1,8 +1,16 @@
+import whisper
+import torch
 import logging
 import queue
 import threading
 import uuid
 from pathlib import Path
+
+import torch
+import whisper
+from flask import Flask, Response, jsonify, request
+
+from transcription import transcription as transcription_worker
 from typing import Optional
 
 import torch
@@ -42,6 +50,25 @@ app.logger.info('Whisper loaded on device: %s', device_name)
 
 def worker():
     while True:
+        file_path, model, device, flask_app = task_queue.get()
+
+        try:
+            app.logger.info('Start transcription work')
+
+            transcription_worker(file_path, model, device, flask_app)
+
+        except Exception as e:
+            app.logger.error('Worker error: %s', e)
+        finally:
+            task_queue.task_done()
+
+threading.Thread(target=worker, daemon=True).start()
+
+app.logger.info('Whisper loaded on device: %s', device_name)
+
+
+def worker():
+    while True:
         file_path, model, device, transcription_id, flask_app = task_queue.get()
 
         try:
@@ -60,6 +87,8 @@ threading.Thread(target=worker, daemon=True).start()
 @app.route("/transcription/", defaults={'transcription_id': None}, methods=['POST'])
 @app.route("/transcription/<transcription_id>", methods=['POST'])
 def transcription(transcription_id: Optional[str]) -> tuple[Response, int]:
+@app.route("/transcription", methods=['POST'])
+def transcription() -> tuple[Response, int]:
     if 'upload-file' not in request.files:
         app.logger.warning('No file part')
         return jsonify({'message': 'No file part'}), 400
@@ -74,6 +103,7 @@ def transcription(transcription_id: Optional[str]) -> tuple[Response, int]:
     audio.save(file_path)
 
     task_queue.put((file_path, MODEL, device_name, transcription_id, app))
+    task_queue.put((file_path, MODEL, device_name, app))
 
     return jsonify({'message': 'File received successfully'}), 202
 

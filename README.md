@@ -1,11 +1,10 @@
  🎙️ Whisper API Server
 
 A lightweight REST API server built with **Flask** and **Gunicorn** that leverages **OpenAI Whisper** for high-accuracy speech-to-text transcription.
-Why not FastAPI + Celery? Because it would require running additional services and managing separate workers. While that approach is more robust, I wanted to find a compromise between reliability and a minimal project footprint. This setup allows for a fully functional application with a single entry point.
 
 ## 💡 Implementation Decisions
 
-During development, I compared **OpenAI Whisper** and **Faster Whisper**. Although Faster Whisper demonstrated superior processing speeds, it presented significant deployment complexities in the server environment. For the sake of stability and easier maintenance, I decided to proceed with the official **OpenAI Whisper** implementation.
+During development, I compared **OpenAI Whisper** and **Faster Whisper**. Although Faster Whisper demonstrated superior processing speeds, it presented significant deployment complexities in the server environment. For the sake of stability and easier maintenance, I decided to proceed with the official **OpenAI Whisper** implementation. Why not FastAPI + Celery? Because it would require running additional services and managing separate workers. While that approach is more robust, I wanted to find a compromise between reliability and a minimal project footprint. This setup allows for a fully functional application with a single entry point.
 
 ## 🛠 Tech Stack
 
@@ -29,6 +28,7 @@ apt update && apt install ffmpeg -y
 Create '.env' file:
 ```bash
 TOKEN=
+WEBHOOK_URL=
 ```
 
 Clone the repository and set up a virtual environment:
