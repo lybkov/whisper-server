@@ -1,6 +1,7 @@
  🎙️ Whisper API Server
 
 A lightweight REST API server built with **Flask** and **Gunicorn** that leverages **OpenAI Whisper** for high-accuracy speech-to-text transcription.
+Why not FastAPI + Celery? Because it would require running additional services and managing separate workers. While that approach is more robust, I wanted to find a compromise between reliability and a minimal project footprint. This setup allows for a fully functional application with a single entry point.
 
 ## 💡 Implementation Decisions
 
