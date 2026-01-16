@@ -28,6 +28,7 @@ apt update && apt install ffmpeg -y
 Create '.env' file:
 ```bash
 TOKEN=
+WEBHOOK_URL=
 ```
 
 Clone the repository and set up a virtual environment:
