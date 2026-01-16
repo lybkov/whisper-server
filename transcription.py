@@ -10,6 +10,7 @@ from flask import Flask
 
 env = dotenv_values('.env')
 key = env.get('TOKEN')
+webhook_url = env.get('')
 
 def transcription(
         file_path: Path,
@@ -48,6 +49,6 @@ def transcription(
     }
     try:
         with httpx.Client() as client:
-            client.post(headers=headers, content=segments, url='http://192.168.1.44/api/v1/webhook/transcription')
+            client.post(headers=headers, content=segments, url=webhook_url)
     except Exception as e:
         app.logger.error('Error to send response: %s', e)

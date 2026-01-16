@@ -1,4 +1,5 @@
 import logging
+import queue
 import threading
 import uuid
 from pathlib import Path
@@ -11,6 +12,8 @@ from transcription import transcription as transcription_worker
 
 STATIC = Path(__file__).resolve().parent / 'static'
 STATIC.mkdir(parents=True, exist_ok=True)
+
+task_queue = queue.Queue()
 
 app = Flask(__name__)
 app.config['static'] = STATIC
@@ -36,6 +39,23 @@ except Exception as e:
 app.logger.info('Whisper loaded on device: %s', device_name)
 
 
+def worker():
+    while True:
+        file_path, model, device, flask_app = task_queue.get()
+
+        try:
+            app.logger.info('Start transcription work')
+
+            transcription_worker(file_path, model, device, flask_app)
+
+        except Exception as e:
+            app.logger.error('Worker error: %s', e)
+        finally:
+            task_queue.task_done()
+
+threading.Thread(target=worker, daemon=True).start()
+
+
 @app.route("/transcription", methods=['POST'])
 def transcription() -> tuple[Response, int]:
     if 'upload-file' not in request.files:
@@ -49,10 +69,9 @@ def transcription() -> tuple[Response, int]:
     filename = f'{uuid.uuid4()}.mp3'
     file_path = STATIC / filename
 
-    threading.Thread(
-        target=transcription_worker,
-        args=(file_path,MODEL, device_name, app),
-        daemon=True).start()
+    audio.save(file_path)
+
+    task_queue.put((file_path, MODEL, device_name, app))
 
     return jsonify({'message': 'File received successfully'}), 202
 
