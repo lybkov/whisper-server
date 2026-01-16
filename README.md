@@ -25,6 +25,11 @@ apt update && apt install ffmpeg -y
 
 ### 2. Environment Setup
 
+Create '.env' file:
+```bash
+TOKEN=
+```
+
 Clone the repository and set up a virtual environment:
 
 ```bash

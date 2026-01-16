@@ -27,11 +27,11 @@ try:
         raise Exception("CUDA device not found")
 
 except Exception as e:
-    app.logger.error(f"!!! GPU Error, falling back to CPU: {e}")
+    app.logger.error('!!! GPU Error, falling back to CPU: %s', e)
     MODEL = whisper.load_model("base", device="cpu")
     device_name = "cpu"
 
-app.logger.info(f"Whisper loaded on device: {device_name}")
+app.logger.info('Whisper loaded on device: %s', device_name)
 
 
 @app.route("/transcription", methods=['POST'])
@@ -47,7 +47,10 @@ def transcription() -> tuple[Response, int]:
     filename = f'{uuid.uuid4()}.mp3'
     file_path = STATIC / filename
 
-    threading.Thread(target=transcription_worker, args=(file_path, MODEL, device_name, app), daemon=True).start()
+    threading.Thread(
+        target=transcription_worker,
+        args=(file_path,MODEL, device_name, app),
+        daemon=True).start()
 
     return jsonify({'message': 'File received successfully'}), 202
 

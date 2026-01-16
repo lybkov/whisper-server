@@ -6,7 +6,10 @@ import httpx
 
 import whisper
 from flask import Flask
+from dotenv import dotenv_values
 
+env = dotenv_values('.env')
+key = env.get('TOKEN')
 
 def transcription(
         file_path: Path,
@@ -32,16 +35,16 @@ def transcription(
             {
                 "start": segment["start"],
                 "end": segment["end"],
-                "text": segment["text"].strip()
+                "text": segment["text"].strip(),
             }
             for segment in result["segments"]
         ]
     })
 
-    signature = hmac.new('key'.encode(), segments.encode(), hashlib.sha256).hexdigest()
+    signature = hmac.new(key.encode(), segments.encode(), hashlib.sha256).hexdigest()
 
     headers = {
-        'x-signature': signature
+        'x-signature': signature,
     }
     try:
         with httpx.Client() as client:
