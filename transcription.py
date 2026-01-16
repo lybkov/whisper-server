@@ -1,12 +1,12 @@
 import hashlib
+import hmac
 import json
 from pathlib import Path
-import hmac
-import httpx
 
+import httpx
 import whisper
-from flask import Flask
 from dotenv import dotenv_values
+from flask import Flask
 
 env = dotenv_values('.env')
 key = env.get('TOKEN')
@@ -38,7 +38,7 @@ def transcription(
                 "text": segment["text"].strip(),
             }
             for segment in result["segments"]
-        ]
+        ],
     })
 
     signature = hmac.new(key.encode(), segments.encode(), hashlib.sha256).hexdigest()

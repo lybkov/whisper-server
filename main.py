@@ -1,10 +1,12 @@
-import whisper
-import torch
 import logging
+import threading
 import uuid
 from pathlib import Path
-from flask import Flask, request, jsonify, Response
-import threading
+
+import torch
+import whisper
+from flask import Flask, Response, jsonify, request
+
 from transcription import transcription as transcription_worker
 
 STATIC = Path(__file__).resolve().parent / 'static'
@@ -56,4 +58,4 @@ def transcription() -> tuple[Response, int]:
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='127.0.0.1', port=5000)
