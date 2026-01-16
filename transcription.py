@@ -27,10 +27,7 @@ def transcription(
 
     except Exception as e:
         app.logger.error('Error transcription: %s', e)
-        app.logger.error('Error transition: %s', e)
         return
-
-    file_path.unlink()
 
     segments = json.dumps({
         "text": result["text"].strip(),
@@ -46,7 +43,6 @@ def transcription(
 
     signature = hmac.new(key.encode(), segments.encode(), hashlib.sha256).hexdigest()
 
-    arg = transcription_id if transcription_id else ''
     base_url = webhook_url.rstrip('/')
 
     headers = {
@@ -55,11 +51,10 @@ def transcription(
     }
     try:
         with httpx.Client() as client:
-            client.post(headers=headers, content=segments, url=webhook_url)
             client.post(
                 headers=headers,
                 content=segments,
-                url=f'{base_url}/{arg}' if transcription_id else base_url,
+                url=f'{base_url}/{transcription_id}' if transcription_id else base_url,
             )
     except Exception as e:
         app.logger.error('Error to send response: %s', e)
