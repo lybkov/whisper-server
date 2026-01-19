@@ -45,7 +45,7 @@ def transcription(
 
     base_url = webhook_url.rstrip('/')
 
-    url = f'{base_url}/{transcription_id}' if transcription_id else base_url
+    url = f'{base_url}/{transcription_id!r}' if transcription_id else base_url
 
     headers = {
         'x-signature': signature,
