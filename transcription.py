@@ -45,6 +45,8 @@ def transcription(
 
     base_url = webhook_url.rstrip('/')
 
+    url = f'{base_url}/{transcription_id}' if transcription_id else base_url
+
     headers = {
         'x-signature': signature,
         'Content-Type': 'application/json',
@@ -54,10 +56,11 @@ def transcription(
             client.post(
                 headers=headers,
                 content=segments,
-                url=f'{base_url}/{transcription_id}' if transcription_id else base_url,
+                url=url,
             )
     except Exception as e:
         app.logger.error('Error to send response: %s', e)
+        app.logger.error('Response url: %s', url)
     finally:
         file_path.unlink()
 
