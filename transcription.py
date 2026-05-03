@@ -22,7 +22,7 @@ def transcription(
         result = model.transcribe(
             str(file_path),
             fp16=False,
-            verbose=False,
+            verbose=None,
         )
 
     except Exception as e:
