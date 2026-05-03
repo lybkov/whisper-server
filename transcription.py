@@ -4,7 +4,6 @@ import json
 from pathlib import Path
 
 import httpx
-import torch
 import whisper
 from dotenv import dotenv_values
 from flask import Flask
@@ -16,13 +15,13 @@ webhook_url = env.get('WEBHOOK_URL')
 def transcription(
         file_path: Path,
         model: whisper.Whisper,
-        device_name: str,
         transcription_id: str,
         app: Flask) -> None:
+    app.logger.info(f'Processing file: {file_path}, size: {file_path.stat().st_size} bytes')
     try:
         result = model.transcribe(
             str(file_path),
-            fp16=(device_name == "cuda"),
+            fp16=False,
             verbose=False,
         )
 
