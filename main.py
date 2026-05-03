@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Optional
 
 import torch
-import whisper
+from faster_whisper import WhisperModel
 from flask import Flask, Response, jsonify, request
 
 from transcription import transcription as transcription_worker
@@ -29,13 +29,13 @@ def worker():
         if torch.cuda.is_available():
             model_name = "base"
             device_name = "cuda"
-            model = whisper.load_model(model_name, device=device_name)
+            model = WhisperModel(model_name, device=device_name, compute_type="float16")
         else:
             raise Exception("CUDA device not found")
 
     except Exception as e:
         app.logger.error('!!! GPU Error, falling back to CPU: %s', e)
-        model = whisper.load_model("base", device="cpu")
+        model = WhisperModel("base", device="cpu", compute_type="int8")
         device_name = "cpu"
 
     app.logger.info('Whisper loaded on device: %s', device_name)
