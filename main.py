@@ -45,7 +45,7 @@ def worker():
         try:
             app.logger.info('Start transcription work')
 
-            transcription_worker(file_path, model, device_name, transcription_id, flask_app)
+            transcription_worker(file_path, model, transcription_id, flask_app)
 
         except Exception as e:
             app.logger.error('Worker error: %s', e)
