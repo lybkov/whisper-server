@@ -24,30 +24,28 @@ if __name__ != '__main__':
     app.logger.handlers = gunicorn_logger.handlers
     app.logger.setLevel(gunicorn_logger.level)
 
-try:
-    if torch.cuda.is_available():
-        model_name = "base"
-        device_name = "cuda"
-        MODEL = whisper.load_model(model_name, device=device_name)
-    else:
-        raise Exception("CUDA device not found")
-
-except Exception as e:
-    app.logger.error('!!! GPU Error, falling back to CPU: %s', e)
-    MODEL = whisper.load_model("base", device="cpu")
-    device_name = "cpu"
-
-app.logger.info('Whisper loaded on device: %s', device_name)
-
-
 def worker():
+    try:
+        if torch.cuda.is_available():
+            model_name = "base"
+            device_name = "cuda"
+            model = whisper.load_model(model_name, device=device_name)
+        else:
+            raise Exception("CUDA device not found")
+
+    except Exception as e:
+        app.logger.error('!!! GPU Error, falling back to CPU: %s', e)
+        model = whisper.load_model("base", device="cpu")
+        device_name = "cpu"
+
+    app.logger.info('Whisper loaded on device: %s', device_name)
     while True:
-        file_path, model, device, transcription_id, flask_app = task_queue.get()
+        file_path, transcription_id, flask_app = task_queue.get()
 
         try:
             app.logger.info('Start transcription work')
 
-            transcription_worker(file_path, model, device, transcription_id, flask_app)
+            transcription_worker(file_path, model, device_name, transcription_id, flask_app)
 
         except Exception as e:
             app.logger.error('Worker error: %s', e)
@@ -73,7 +71,7 @@ def transcription(transcription_id: Optional[str]) -> tuple[Response, int]:
 
     audio.save(file_path)
 
-    task_queue.put((file_path, MODEL, device_name, transcription_id, app))
+    task_queue.put((file_path, transcription_id, app))
 
     return jsonify({'message': 'File received successfully'}), 202
 

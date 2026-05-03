@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import httpx
+import torch
 import whisper
 from dotenv import dotenv_values
 from flask import Flask
@@ -57,10 +58,10 @@ def transcription(
                 headers=headers,
                 content=segments,
                 url=url,
+                timeout=15.0,
             )
     except Exception as e:
         app.logger.error('Error to send response: %s', e)
         app.logger.error('Response url: %s', url)
     finally:
         file_path.unlink()
-
