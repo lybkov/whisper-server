@@ -8,6 +8,7 @@ from pathlib import Path
 import torch
 from dotenv import dotenv_values
 from faster_whisper import WhisperModel
+import httpx
 
 logger = logging.getLogger('gunicorn.error')
 
