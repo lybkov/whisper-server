@@ -19,10 +19,11 @@ task_queue = queue.Queue()
 app = Flask(__name__)
 app.config['static'] = STATIC
 
-if __name__ != '__main__':
-    gunicorn_logger = logging.getLogger('gunicorn.error')
-    app.logger.handlers = gunicorn_logger.handlers
-    app.logger.setLevel(gunicorn_logger.level)
+# Настройка системного логгера
+gunicorn_logger = logging.getLogger('gunicorn.error')
+app.logger.handlers = gunicorn_logger.handlers
+app.logger.setLevel(gunicorn_logger.level)
+
 
 def worker():
     try:
@@ -34,24 +35,28 @@ def worker():
             raise Exception("CUDA device not found")
 
     except Exception as e:
-        app.logger.error('!!! GPU Error, falling back to CPU: %s', e)
+        gunicorn_logger.error('!!! GPU Error, falling back to CPU: %s', e)
         model = WhisperModel("base", device="cpu", compute_type="int8")
         device_name = "cpu"
 
-    app.logger.info('Whisper loaded on device: %s', device_name)
+    gunicorn_logger.info('Whisper loaded on device: %s', device_name)
+
     while True:
-        file_path, transcription_id, flask_app = task_queue.get()
+        # Убрали flask_app из очереди, передаем только путь и id
+        file_path, transcription_id = task_queue.get()
 
         try:
-            app.logger.info('Start transcription work')
-
-            transcription_worker(file_path, model, transcription_id, flask_app)
+            gunicorn_logger.info('Start transcription work')
+            # Вызываем воркер без передачи app
+            transcription_worker(file_path, model, transcription_id)
 
         except Exception as e:
-            app.logger.error('Worker error: %s', e)
+            gunicorn_logger.error('Worker error: %s', e)
         finally:
             task_queue.task_done()
 
+
+# Запуск фонового потока
 threading.Thread(target=worker, daemon=True).start()
 
 
@@ -71,7 +76,8 @@ def transcription(transcription_id: Optional[str]) -> tuple[Response, int]:
 
     audio.save(file_path)
 
-    task_queue.put((file_path, transcription_id, app))
+    # Передаем в очередь только необходимые данные (без объекта app)
+    task_queue.put((file_path, transcription_id))
 
     return jsonify({'message': 'File received successfully'}), 202
 
