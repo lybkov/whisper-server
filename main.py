@@ -30,7 +30,7 @@ def run_in_separate_process(file_path: Path, transcription_id: Optional[str]):
 
     try:
         if torch.cuda.is_available():
-            model_name = "base"
+            model_name = "medium"
             device_name = "cuda"
             # Передаем напрямую параметры, чтобы не держать лишний кэш
             model = WhisperModel(model_name, device=device_name, compute_type="float16")
