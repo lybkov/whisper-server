@@ -14,20 +14,16 @@ logger = logging.getLogger('gunicorn.error')
 
 env = dotenv_values('.env')
 key = env.get('TOKEN')
-webhook_url = env.get('WEBHOOK_URL')
 
 
-def transcription(file_path: Path, model: WhisperModel, transcription_id: str) -> None:
+def transcription(file_path: Path, model: WhisperModel, transcription_id: str, reverse_url: str) -> None:
     logger.info(f'[ШАГ 1] Начало обработки файла: {file_path}')
 
-    # Создаем временную папку для кусочков аудио рядом с файлом
     chunks_dir = file_path.parent / f"chunks_{transcription_id}"
     chunks_dir.mkdir(exist_ok=True)
 
     try:
         logger.info('[ШАГ 2] Нарезка файла на чанки по 20 минут через FFmpeg...')
-        # Нарезаем файл средствами FFmpeg без потери качества (-c copy) прямо на HDD
-        # Куски будут называться chunk_000.mp3, chunk_001.mp3 и т.д.
         cmd = [
             'ffmpeg', '-i', str(file_path),
             '-f', 'segment', '-segment_time', '1200',
@@ -40,7 +36,7 @@ def transcription(file_path: Path, model: WhisperModel, transcription_id: str) -
 
         full_text = []
         result_segments = []
-        time_shift = 0.0  # Сдвиг по времени для склейки таймкодов
+        time_shift = 0.0
 
         for idx, chunk_path in enumerate(chunk_files):
             logger.info(f' Обработка чанка {idx + 1}/{len(chunk_files)}: {chunk_path.name}')
@@ -55,13 +51,10 @@ def transcription(file_path: Path, model: WhisperModel, transcription_id: str) -
                     'text': segment.text.strip(),
                 })
 
-            # Увеличиваем временной сдвиг на длительность текущего обработанного чанка
             time_shift += info.duration
 
-            # Сразу удаляем отработанный чанк с HDD, чтобы освободить место
             chunk_path.unlink()
 
-            # Чистим кэш после каждого куска
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
 
@@ -77,16 +70,14 @@ def transcription(file_path: Path, model: WhisperModel, transcription_id: str) -
         logger.error('[ОШИБКА] Сбой во время транскрибации: %s', e, exc_info=True)
         return
     finally:
-        # Очистка временных файлов при любом исходе
         if chunks_dir.exists():
             for f in chunks_dir.glob('*'): f.unlink()
             chunks_dir.rmdir()
         if file_path.exists():
             file_path.unlink()
 
-    # --- Код отправки Webhook (Остается прежним) ---
     signature = hmac.new(key.encode(), segments_json.encode(), hashlib.sha256).hexdigest()
-    base_url = webhook_url.rstrip('/')
+    base_url = reverse_url.rstrip('/')
     url = f'{base_url}/{transcription_id!s}' if transcription_id else base_url
 
     headers = {
