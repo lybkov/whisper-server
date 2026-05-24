@@ -13,18 +13,12 @@ STATIC.mkdir(parents=True, exist_ok=True)
 app = Flask(__name__)
 app.config['static'] = STATIC
 
-# Настройка системного логгера Gunicorn
 gunicorn_logger = logging.getLogger('gunicorn.error')
 app.logger.handlers = gunicorn_logger.handlers
 app.logger.setLevel(gunicorn_logger.level)
 
 
-def run_in_separate_process(file_path: Path, transcription_id: Optional[str]):
-    """
-    Эта функция запускается в отдельном процессе.
-    Модель инициализируется внутри процесса, выполняет работу и умирает,
-    гарантированно очищая 100% RAM и VRAM.
-    """
+def run_in_separate_process(file_path: Path, transcription_id: str, reverse_url: str):
     import torch
     from faster_whisper import WhisperModel
 
@@ -32,7 +26,6 @@ def run_in_separate_process(file_path: Path, transcription_id: Optional[str]):
         if torch.cuda.is_available():
             model_name = "medium"
             device_name = "cuda"
-            # Передаем напрямую параметры, чтобы не держать лишний кэш
             model = WhisperModel(model_name, device=device_name, compute_type="float16")
         else:
             raise Exception("CUDA device not found")
@@ -45,17 +38,26 @@ def run_in_separate_process(file_path: Path, transcription_id: Optional[str]):
 
     try:
         gunicorn_logger.info('Start transcription work in isolated process')
-        transcription_worker(file_path, model, transcription_id)
+        transcription_worker(file_path, model, transcription_id, reverse_url)
     except Exception as e:
         gunicorn_logger.error('Worker process error: %s', e)
 
 
 @app.route("/transcription/", defaults={'transcription_id': None}, methods=['POST'])
 @app.route("/transcription/<transcription_id>", methods=['POST'])
-def transcription(transcription_id: Optional[str]) -> tuple[Response, int]:
+def transcription(transcription_id: str) -> tuple[Response, int]:
+    if not transcription_id:
+        app.logger.warning('Not transcription_id')
+        return jsonify({'message': 'Not transcription_id'}), 400
     if 'upload-file' not in request.files:
         app.logger.warning('No file part')
         return jsonify({'message': 'No file part'}), 400
+
+    reverse_url = request.form.get('reverse_url')
+
+    if not reverse_url:
+        app.logger.warning('Not reverse url.')
+        return jsonify({'message': 'Not reverse url'}), 400
 
     audio = request.files['upload-file']
     if audio.filename == '':
@@ -65,10 +67,9 @@ def transcription(transcription_id: Optional[str]) -> tuple[Response, int]:
     file_path = STATIC / filename
     audio.save(file_path)
 
-    # ВМЕСТО очереди запускаем изолированный процесс
     p = multiprocessing.Process(
         target=run_in_separate_process,
-        args=(file_path, transcription_id)
+        args=(file_path, transcription_id, reverse_url)
     )
     p.start()
 
@@ -76,6 +77,5 @@ def transcription(transcription_id: Optional[str]) -> tuple[Response, int]:
 
 
 if __name__ == '__main__':
-    # Это важно для стабильности работы multiprocessing в Flask
     multiprocessing.set_start_method('spawn', force=True)
     app.run(host='127.0.0.1', port=5000)
