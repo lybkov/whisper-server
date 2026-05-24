@@ -86,7 +86,12 @@ def transcription(file_path: Path, model: WhisperModel, transcription_id: str, r
     try:
         logger.info(f'[ШАГ 6] Отправка webhook на URL: {reverse_url}')
         with httpx.Client() as client:
-            response = client.post(headers=headers, content=segments_json, url=reverse_url, timeout=15.0)
+            response = client.post(
+                headers=headers,
+                content=segments_json,
+                url=f'{reverse_url}/{transcription_id}',
+                timeout=15.0,
+            )
         logger.info(f'[ШАГ 7] Webhook успешно отправлен! Статус: {response.status_code}')
     except Exception as e:
         logger.error('[ОШИБКА] Сбой при отправке webhook: %s', e, exc_info=True)
