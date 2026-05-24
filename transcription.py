@@ -77,7 +77,7 @@ def transcription(file_path: Path, model: WhisperModel, transcription_id: str, r
             file_path.unlink()
 
     signature = hmac.new(key.encode(), segments_json.encode(), hashlib.sha256).hexdigest()
-    url = f'http://{env.get("IP_CONTAINER")}:8000/api/v1/webhook/transcription'
+    url = f'http://{reverse_url}:8000/api/v1/webhook/transcription'
     logger.info(f'Reverse url: {url}')
 
     headers = {
