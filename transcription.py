@@ -77,8 +77,6 @@ def transcription(file_path: Path, model: WhisperModel, transcription_id: str, r
             file_path.unlink()
 
     signature = hmac.new(key.encode(), segments_json.encode(), hashlib.sha256).hexdigest()
-    url = f'http://{reverse_url}:8000/api/v1/webhook/transcription'
-    logger.info(f'Reverse url: {url}')
 
     headers = {
         'x-signature': signature,
@@ -86,9 +84,10 @@ def transcription(file_path: Path, model: WhisperModel, transcription_id: str, r
     }
 
     try:
-        logger.info(f'[ШАГ 6] Отправка webhook на URL: {url}')
+        logger.info(f'[ШАГ 6] Отправка webhook на URL: {reverse_url}')
         with httpx.Client() as client:
-            response = client.post(headers=headers, content=segments_json, url=url, timeout=15.0)
+            response = client.post(headers=headers, content=segments_json, url=reverse_url, timeout=15.0)
         logger.info(f'[ШАГ 7] Webhook успешно отправлен! Статус: {response.status_code}')
     except Exception as e:
         logger.error('[ОШИБКА] Сбой при отправке webhook: %s', e, exc_info=True)
+
